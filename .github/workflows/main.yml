@@ -63,7 +63,7 @@ jobs:
       run: |
         mlflow models build-docker \
           -m "runs:/${{ env.RUN_ID }}/model" \
-          -n reehandn/adult-mlflow.mlflow
+          -n reehandn/adult-mlflow
 
     - name: Login Docker Hub
       uses: docker/login-action@v3
@@ -73,13 +73,13 @@ jobs:
 
     - name: Tag Docker Image
       run: |
-        docker tag reehandn/adult-mlflow.mlflow:latest \
-                   reehandn/adult-mlflow.mlflow:${{ env.RUN_ID }}
+        docker tag reehandn/adult-mlflow:latest \
+                   reehandn/adult-mlflow:${{ env.RUN_ID }}
 
     - name: Push Docker Image
       run: |
-        docker push reehandn/adult-mlflow.mlflow:latest
-        docker push reehandn/adult-mlflow.mlflow:${{ env.RUN_ID }}
+        docker push reehandn/adult-mlflow:latest
+        docker push reehandn/adult-mlflow:${{ env.RUN_ID }}
 
     - name: Complete job
       run: echo "MLflow CI Pipeline Completed"
