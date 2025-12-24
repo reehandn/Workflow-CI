@@ -59,7 +59,7 @@ with mlflow.start_run() as run:
     with open(os.path.join(BASE_DIR, "run_id.txt"), "w") as f:
         f.write(run_id)
 
-    print(f"[INFO] Accuracy: {acc}")
-    print(f"[INFO] Run ID: {run_id}")
+    print(f"Accuracy: {acc}")
+    print(f"Run ID: {run_id}")
 
-print("[INFO] Training selesai")
+print("Training selesai")
