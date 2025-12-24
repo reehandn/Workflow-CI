@@ -1,158 +1,85 @@
-name: MLflow CI Retraining
+name: MLflow CI Pipeline
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
+    paths:
+      - "MLProject/**"
   workflow_dispatch:
 
 jobs:
   train-and-build:
     runs-on: ubuntu-latest
 
+    env:
+      MLFLOW_TRACKING_URI: https://dagshub.com/username/adult-income-mlflow.mlflow
+      MLFLOW_TRACKING_USERNAME: ${{ secrets.DAGSHUB_USER }}
+      MLFLOW_TRACKING_PASSWORD: ${{ secrets.DAGSHUB_TOKEN }}
+
     steps:
+    - name: Set up job
+      run: echo "Starting MLflow CI Pipeline"
+
     - name: Checkout repository
       uses: actions/checkout@v4
 
     - name: Set up Python
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v4
       with:
-        python-version: "3.10"
+        python-version: "3.12"
 
-    - name: Install system dependencies
+    - name: Check environment
       run: |
-        sudo apt-get update
-        sudo apt-get install -y jq
+        python --version
+        pip --version
 
-    - name: Install Python dependencies
+    - name: Install dependencies
       run: |
-        pip install mlflow dagshub pandas scikit-learn matplotlib
+        pip install mlflow==2.19.0 dagshub pandas numpy scikit-learn joblib
 
-    - name: Run MLflow Project (local env)
-      working-directory: MLProject
-      env:
-        DAGSHUB_USER_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
+    - name: Run MLflow Project
       run: |
-        mlflow run . --env-manager=local
+        mlflow run MLProject \
+          --env-manager=local \
+          --experiment-name "Adult_Income_Basic" \
+          -P max_iter=1000
 
-    - name: Get latest RUN_ID
-      working-directory: MLProject
-      env:
-        MLFLOW_TRACKING_URI: https://dagshub.com/reehandn/Workflow-CI
-        MLFLOW_TRACKING_USERNAME: reehandn
-        MLFLOW_TRACKING_PASSWORD: ${{ secrets.DAGSHUB_TOKEN }}
+    - name: Read Run ID
       run: |
-        set -euxo pipefail
-        RUN_ID=$(python - <<'PY'
-        import os
-        import mlflow
-        from mlflow.tracking import MlflowClient
+        echo "RUN_ID=$(cat MLProject/run_id.txt)" >> $GITHUB_ENV
 
-        mlflow.set_tracking_uri(os.environ["MLFLOW_TRACKING_URI"])
-        client = MlflowClient()
-
-        exp = client.get_experiment_by_name("Adult Income Advanced Tuning")
-        if exp is None:
-            raise SystemExit("Experiment tidak ditemukan: Adult Income Advanced Tuning")
-
-        runs = client.search_runs(
-            [exp.experiment_id],
-            filter_string="attributes.status = 'FINISHED'",
-            order_by=["attributes.start_time DESC"],
-            max_results=1
-        )
-        if not runs:
-            raise SystemExit("Tidak ada run FINISHED pada experiment tsb")
-
-        print(runs[0].info.run_id)
-        PY
-        )
-        echo "RUN_ID=$RUN_ID" >> $GITHUB_ENV
-        echo "Using RUN_ID=$RUN_ID"
-
-    - name: DEBUG - path artifact
-      working-directory: MLProject
-      env:
-        MLFLOW_TRACKING_URI: https://dagshub.com/reehandn/Workflow-CI
-        MLFLOW_TRACKING_USERNAME: reehandn
-        MLFLOW_TRACKING_PASSWORD: ${{ secrets.DAGSHUB_TOKEN }}
+    - name: Download MLflow Model Artifacts
       run: |
-        set -euxo pipefail
+        mkdir -p downloaded_model
+        mlflow artifacts download --run-id ${{ env.RUN_ID }} --artifact-path model --dst-path downloaded_model
 
-        echo "RUN_ID=${RUN_ID:-}"
-        if [ -z "${RUN_ID:-}" ]; then
-          echo "ERROR: RUN_ID belum terset. Pastikan step Get latest RUN_ID ada & jalan."
-          exit 1
-        fi
+    - name: Upload Model Artifact to GitHub
+      uses: actions/upload-artifact@v4
+      with:
+          name: model-artifact-${{ env.RUN_ID }}
+          path: downloaded_model/model
 
-        echo "=== Artifacts (root) ==="
-        mlflow artifacts list -r "$RUN_ID" || true
-
-        echo "=== Artifacts (coba beberapa path umum) ==="
-        mlflow artifacts list -r "$RUN_ID" -a "model" || true
-        mlflow artifacts list -r "$RUN_ID" -a "artifacts" || true
-        mlflow artifacts list -r "$RUN_ID" -a "models" || true
-        mlflow artifacts list -r "$RUN_ID" -a "sklearn-model" || true
-
-    - name: Build Docker Image from MLflow Model
-      working-directory: MLProject
-      env:
-        MLFLOW_TRACKING_URI: https://dagshub.com/reehandn/Workflow-CI
-        MLFLOW_TRACKING_USERNAME: reehandn
-        MLFLOW_TRACKING_PASSWORD: ${{ secrets.DAGSHUB_TOKEN }}
+    - name: Build Docker Image
       run: |
-        set -euxo pipefail
-
-        if [ -z "${RUN_ID:-}" ]; then
-          echo "ERROR: RUN_ID belum terset."
-          exit 1
-        fi
-
-        MODEL_PATH=$(python - <<'PY'
-        import os
-        from mlflow.tracking import MlflowClient
-
-        client = MlflowClient(tracking_uri=os.environ["MLFLOW_TRACKING_URI"])
-        run_id = os.environ["RUN_ID"]
-
-        def walk(path=""):
-            items = client.list_artifacts(run_id, path)
-            for it in items:
-                if it.is_dir:
-                    yield from walk(it.path)
-                else:
-                    yield it.path
-
-        # cari file "MLmodel"
-        mlmodel_files = [p for p in walk("") if p.endswith("/MLmodel") or p == "MLmodel"]
-        if not mlmodel_files:
-            raise SystemExit("Tidak menemukan file MLmodel di artifacts run ini.")
-
-        # direktori model = parent dari MLmodel
-        model_dir = mlmodel_files[0].rsplit("/", 1)[0] if "/" in mlmodel_files[0] else ""
-        print(model_dir)
-        PY
-        )
-
-        echo "Detected MODEL_PATH='$MODEL_PATH'"
-
-        if [ -n "$MODEL_PATH" ]; then
-          MODEL_URI="runs:/$RUN_ID/$MODEL_PATH"
-        else
-          MODEL_URI="runs:/$RUN_ID"
-        fi
-
-        echo "Using MODEL_URI=$MODEL_URI"
-
         mlflow models build-docker \
-          --model-uri "$MODEL_URI" \
-          --name reehandn/adult-income-mlflow
+          -m "runs:/${{ env.RUN_ID }}/model" \
+          -n username/adult-income-mlflow
 
-    - name: Login to Docker Hub
+    - name: Login Docker Hub
       uses: docker/login-action@v3
       with:
-        username: ${{ secrets.DOCKERHUB_USERNAME }}
-        password: ${{ secrets.DOCKERHUB_TOKEN }}
+        username: ${{ secrets.DOCKER_HUB_USERNAME }}
+        password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+
+    - name: Tag Docker Image
+      run: |
+        docker tag username/adult-income-mlflow:latest \
+                   username/adult-income-mlflow:${{ env.RUN_ID }}
 
     - name: Push Docker Image
       run: |
-        docker push reehandn/adult-income-mlflow
+        docker push username/adult-income-mlflow:latest
+        docker push username/adult-income-mlflow:${{ env.RUN_ID }}
+
+    - name: Complete job
+      run: echo "MLflow CI Pipeline Completed"
