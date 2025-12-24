@@ -35,6 +35,7 @@ jobs:
 
       - name: Get latest MLflow run id
         run: |
+          cd MLProject
           RUN_ID=$(ls mlruns/* | grep -v meta.yaml | head -n 1 | xargs -n 1 basename)
           echo "RUN_ID=$RUN_ID" >> $GITHUB_ENV
           echo "Latest run id: $RUN_ID"
