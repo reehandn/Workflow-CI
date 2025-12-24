@@ -32,7 +32,6 @@ jobs:
         run: |
           cd MLProject
           export MLFLOW_TRACKING_URI=file:$(pwd)/mlruns
-          export MLFLOW_ARTIFACT_URI=file:$(pwd)/mlruns
           mlflow run .
 
       - name: Get latest MLflow run id
