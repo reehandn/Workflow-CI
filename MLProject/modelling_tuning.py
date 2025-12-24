@@ -2,6 +2,7 @@
 # IMPORT & ENV FIX
 # ======================================
 import os
+from mlflow.tracking import MlflowClient
 
 # FIX: Hapus parent run dari mlflow project (WAJIB UNTUK CI + DAGSHUB)
 if "MLFLOW_RUN_ID" in os.environ:
@@ -64,6 +65,11 @@ param_grid = [
 # ======================================
 for params in param_grid:
     with mlflow.start_run():
+        run_id = mlflow.active_run().info.run_id
+        print("MLflow version:", mlflow.__version__)
+        print("RUN_ID (script):", run_id)
+        print("Artifact URI:", mlflow.get_artifact_uri())
+
         # -------- Log Parameters --------
         mlflow.log_param("C", params["C"])
         mlflow.log_param("solver", params["solver"])
@@ -114,8 +120,18 @@ for params in param_grid:
 
         mlflow.log_artifact("classification_report.txt")
 
-        # -------- Log Model --------
+        client = MlflowClient()
+        print("Artifacts root (before log_model):",
+            [a.path for a in client.list_artifacts(run_id, "")])
+
+        # Log Model
         mlflow.sklearn.log_model(model, "model")
+
+        # sesudah log_model, cek apakah folder model muncul
+        print("Artifacts root (after log_model):",
+            [a.path for a in client.list_artifacts(run_id, "")])
+        print("Artifacts in 'model' after log_model:",
+            [a.path for a in client.list_artifacts(run_id, "model")])
 
         print(
             f"Finished run | C={params['C']} | "
