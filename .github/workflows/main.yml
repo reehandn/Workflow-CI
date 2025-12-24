@@ -1,4 +1,4 @@
-name: MLflow CI Workflow
+name: workflow-ci-mlflow
 
 on:
   push:
@@ -10,100 +10,54 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    # ===============================
-    # Set up job
-    # ===============================
-    - name: Run actions/checkout@v3
-      uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
-    - name: Set up Python 3.12.7
-      uses: actions/setup-python@v4
-      with:
-        python-version: "3.12.7"
+      - name: Set up Miniconda
+        uses: conda-incubator/setup-miniconda@v3
+        with:
+          auto-update-conda: true
+          python-version: 3.12
 
-    - name: Check Env
-      run: |
-        python --version
-        pip --version
+      - name: Check conda
+        run: conda --version
 
-    # ===============================
-    # Install dependencies
-    # ===============================
-    - name: Install dependencies
-      run: |
-        pip install mlflow
+      - name: Install dependencies
+        run: |
+          pip install mlflow docker
 
-    # ===============================
-    # Run mlflow project
-    # ===============================
-    - name: Run mlflow project
-      run: |
-        cd MLProject
-        mlflow run .
+      - name: Run MLflow Project
+        run: |
+          cd MLProject
+          mlflow run .
 
-    # ===============================
-    # Get latest MLflow run id
-    # ===============================
-    - name: Get latest MLflow run id
-      run: |
-        cd MLProject
-        RUN_ID=$(ls mlruns/*/* | head -n 1 | cut -d'/' -f2)
-        echo "RUN_ID=$RUN_ID" >> $GITHUB_ENV
-        echo "Latest run id: $RUN_ID"
+      - name: Get latest MLflow run id
+        run: |
+          RUN_ID=$(ls mlruns/* | grep -v meta.yaml | head -n 1 | xargs -n 1 basename)
+          echo "RUN_ID=$RUN_ID" >> $GITHUB_ENV
+          echo "Latest run id: $RUN_ID"
 
-    # ===============================
-    # Install Python dependencies (post-mlflow run)
-    # ===============================
-    - name: Install Python dependencies
-      run: |
-        pip install docker
+      - name: Upload MLflow artifacts to GitHub
+        uses: actions/upload-artifact@v4
+        with:
+          name: mlflow-artifacts
+          path: mlruns
 
-    # ===============================
-    # Upload to GitHub (artifact storage)
-    # ===============================
-    - name: Upload MLflow artifacts to GitHub
-      uses: actions/upload-artifact@v4
-      with:
-        name: mlflow-artifacts
-        path: MLProject/mlruns
+      - name: Build Docker Model
+        run: |
+          mlflow models build-docker \
+            --model-uri runs:/${{ env.RUN_ID }}/model \
+            --name ${{ secrets.DOCKER_USERNAME }}/workflow-ci-model
 
-    # ===============================
-    # Build Docker Model
-    # ===============================
-    - name: Build Docker Model
-      run: |
-        cd MLProject
-        mlflow models build-docker \
-          --model-uri runs:/${{ env.RUN_ID }}/model \
-          --name ${{ secrets.DOCKER_USERNAME }}/workflow-ci-model
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
 
-    # ===============================
-    # Log in to Docker Hub
-    # ===============================
-    - name: Log in to Docker Hub
-      uses: docker/login-action@v3
-      with:
-        username: ${{ secrets.DOCKER_USERNAME }}
-        password: ${{ secrets.DOCKER_PASSWORD }}
+      - name: Push Docker Image
+        run: |
+          docker push ${{ secrets.DOCKER_USERNAME }}/workflow-ci-model:latest
 
-    # ===============================
-    # Tag Docker Image
-    # ===============================
-    - name: Tag Docker Image
-      run: |
-        docker tag \
-        ${{ secrets.DOCKER_USERNAME }}/workflow-ci-model \
-        ${{ secrets.DOCKER_USERNAME }}/workflow-ci-model:latest
-
-    # ===============================
-    # Push Docker Image
-    # ===============================
-    - name: Push Docker Image
-      run: |
-        docker push ${{ secrets.DOCKER_USERNAME }}/workflow-ci-model:latest
-
-    # ===============================
-    # Complete job
-    # ===============================
-    - name: Complete job
-      run: echo "MLflow CI Pipeline completed successfully"
+      - name: Complete job
+        run: echo "MLflow CI Pipeline completed successfully"
