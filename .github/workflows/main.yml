@@ -34,7 +34,7 @@ jobs:
       run: |
         mlflow run . --env-manager=local
 
-    - name: Build Docker Image from MLflow Model
+    name: Build Docker Image from MLflow Model
       working-directory: MLProject
       env:
         MLFLOW_TRACKING_URI: https://dagshub.com/reehandn/adult-mlflow.mlflow
@@ -42,6 +42,7 @@ jobs:
         MLFLOW_TRACKING_PASSWORD: ${{ secrets.DAGSHUB_TOKEN }}
       run: |
         set -euxo pipefail
+<<<<<<< HEAD
 
           RUN_ID=$(python - <<'PY'
         import os
@@ -72,6 +73,38 @@ jobs:
             mlflow models build-docker \
               --model-uri "runs:/$RUN_ID/model" \
               --name reehandn/adult-income-mlflow
+=======
+      
+          RUN_ID=$(python - <<'PY'
+      import os
+      import mlflow
+      from mlflow.tracking import MlflowClient
+      
+      mlflow.set_tracking_uri(os.environ["MLFLOW_TRACKING_URI"])
+      client = MlflowClient()
+      
+      exp = client.get_experiment_by_name("Adult Income Advanced Tuning")
+      if exp is None:
+          raise SystemExit("Experiment tidak ditemukan: Adult Income Advanced Tuning")
+      
+      runs = client.search_runs(
+          [exp.experiment_id],
+          filter_string="attributes.status = 'FINISHED'",
+          order_by=["attributes.start_time DESC"],
+          max_results=1
+      )
+      if not runs:
+          raise SystemExit("Tidak ada run FINISHED pada experiment tsb")
+      
+      print(runs[0].info.run_id)
+      PY
+          )
+      
+          echo "Using RUN_ID=$RUN_ID"
+          mlflow models build-docker \
+            --model-uri "runs:/$RUN_ID/model" \
+            --name reehandn/adult-income-mlflow
+>>>>>>> 839f3d30310651b5414c61dfc418699edeae5b35
 
     - name: Login to Docker Hub
       uses: docker/login-action@v3
