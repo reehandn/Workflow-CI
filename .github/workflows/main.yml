@@ -29,6 +29,8 @@ jobs:
       - name: Run MLflow Project & Build Docker Image
         run: |
           cd MLProject
+          export MLFLOW_TRACKING_URI=file:$(pwd)/mlruns
+          export MLFLOW_ARTIFACT_URI=file:$(pwd)/mlruns
           mlflow run . --build-image --env-manager=local
 
       - name: Upload MLflow artifacts
