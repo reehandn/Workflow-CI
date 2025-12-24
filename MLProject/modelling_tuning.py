@@ -44,7 +44,7 @@ param_grid = [
 
 # Training loop
 for params in param_grid:
-    with mlflow.start_run():
+    with mlflow.start_run(nested=True):
         # -------- Log params --------
         mlflow.log_param("C", params["C"])
         mlflow.log_param("solver", params["solver"])
