@@ -1,6 +1,6 @@
-name: adult-income-training
+name: adult-income
 
 entry_points:
   main:
     command: >
-      python modelling_tuning.py
+      python modelling.py
