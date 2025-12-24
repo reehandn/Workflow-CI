@@ -4,21 +4,21 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
 import pandas as pd
-import warnings
 
-warnings.filterwarnings("ignore")
+mlflow.set_experiment("Adult Income CI")
 
-if __name__ == "__main__":
+df = pd.read_csv("adult_preprocessed.csv")
 
-    df = pd.read_csv("adult_preprocessed.csv")
+X = df.drop("income", axis=1)
+y = df["income"]
 
-    X = df.drop("income", axis=1)
-    y = df["income"]
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42
+)
 
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=42
-    )
+mlflow.autolog()
 
+with mlflow.start_run():
     model = LogisticRegression(max_iter=1000)
     model.fit(X_train, y_train)
 
@@ -26,13 +26,3 @@ if __name__ == "__main__":
     acc = accuracy_score(y_test, y_pred)
 
     print("Accuracy:", acc)
-
-    mlflow.log_metric("accuracy", acc)
-
-    input_example = X_train.iloc[:5]
-
-    mlflow.sklearn.log_model(
-        sk_model=model,
-        artifact_path="model",
-        input_example=input_example
-    )

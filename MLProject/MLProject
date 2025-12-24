@@ -1,4 +1,4 @@
-name: workflow-ci-mlflow
+name: adult_income_ci
 
 conda_env: conda.yaml
 

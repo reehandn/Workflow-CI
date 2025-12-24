@@ -1,11 +1,10 @@
-name: adult-income-mlflow
+name: adult-income-env
 channels:
-  - conda-forge
+  - defaults
 dependencies:
   - python=3.12
   - pip
   - pip:
       - mlflow
-      - pandas
       - scikit-learn
-      - numpy
+      - pandas
