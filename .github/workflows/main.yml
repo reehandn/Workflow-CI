@@ -25,10 +25,19 @@ jobs:
       run: |
         pip install mlflow scikit-learn pandas
 
+    - name: Reset MLflow env
+      run: |
+        unset MLFLOW_TRACKING_URI
+        unset MLFLOW_ARTIFACT_URI
+        unset MLFLOW_REGISTRY_URI
+
     - name: Run MLflow Project
       run: |
         cd MLProject
-        mlflow run . --env-manager=local
+        mlflow run . \
+          --env-manager=local \
+          --experiment-name ci-experiment
+
 
     - name: Get latest MLflow run_id
       id: runid
