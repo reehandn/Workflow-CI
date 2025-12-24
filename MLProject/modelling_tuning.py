@@ -1,3 +1,12 @@
+# ======================================
+# IMPORT & ENV FIX
+# ======================================
+import os
+
+# FIX: Hapus parent run dari mlflow project (WAJIB UNTUK CI + DAGSHUB)
+if "MLFLOW_RUN_ID" in os.environ:
+    del os.environ["MLFLOW_RUN_ID"]
+
 import dagshub
 import mlflow
 import mlflow.sklearn
@@ -15,17 +24,23 @@ from sklearn.metrics import (
     classification_report
 )
 
-# ===== DAGSHUB INIT (WAJIB) =====
+# ======================================
+# DAGSHUB INIT (WAJIB)
+# ======================================
 dagshub.init(
     repo_owner="reehandn",
     repo_name="adult-mlflow",
     mlflow=True
 )
 
-# MLflow experiment (DAGSHUB)
+# ======================================
+# MLFLOW EXPERIMENT
+# ======================================
 mlflow.set_experiment("Adult Income Advanced Tuning")
 
-# Load dataset
+# ======================================
+# LOAD DATASET
+# ======================================
 df = pd.read_csv("adult_preprocessed.csv")
 
 X = df.drop("income", axis=1)
@@ -35,23 +50,27 @@ X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.2, random_state=42
 )
 
-# Hyperparameter tuning
+# ======================================
+# HYPERPARAMETER GRID
+# ======================================
 param_grid = [
     {"C": 0.1, "solver": "lbfgs"},
     {"C": 1.0, "solver": "lbfgs"},
     {"C": 10.0, "solver": "lbfgs"},
 ]
 
-# Training loop
+# ======================================
+# TRAINING LOOP
+# ======================================
 for params in param_grid:
-    with mlflow.start_run(nested=True):
-        # -------- Log params --------
+    with mlflow.start_run():
+        # -------- Log Parameters --------
         mlflow.log_param("C", params["C"])
         mlflow.log_param("solver", params["solver"])
         mlflow.log_param("penalty", "l2")
         mlflow.log_param("max_iter", 1000)
 
-        # -------- Train model --------
+        # -------- Train Model --------
         model = LogisticRegression(
             C=params["C"],
             solver=params["solver"],
@@ -63,7 +82,7 @@ for params in param_grid:
         # -------- Prediction --------
         y_pred = model.predict(X_test)
 
-        # -------- Metrics (autolog-like) --------
+        # -------- Metrics --------
         acc = accuracy_score(y_test, y_pred)
         prec = precision_score(y_test, y_pred)
         rec = recall_score(y_test, y_pred)
@@ -74,7 +93,7 @@ for params in param_grid:
         mlflow.log_metric("recall", rec)
         mlflow.log_metric("f1_score", f1)
 
-        # Confusion Matrix (PNG)
+        # -------- Confusion Matrix --------
         cm = confusion_matrix(y_test, y_pred)
         plt.figure()
         plt.imshow(cm)
@@ -88,13 +107,17 @@ for params in param_grid:
 
         mlflow.log_artifact("confusion_matrix.png")
 
-    
+        # -------- Classification Report --------
         report = classification_report(y_test, y_pred)
         with open("classification_report.txt", "w") as f:
             f.write(report)
 
         mlflow.log_artifact("classification_report.txt")
 
+        # -------- Log Model --------
         mlflow.sklearn.log_model(model, "model")
 
-        print(f"Finished run: params={params}, accuracy={acc:.4f}")
+        print(
+            f"Finished run | C={params['C']} | "
+            f"accuracy={acc:.4f} | f1={f1:.4f}"
+        )
