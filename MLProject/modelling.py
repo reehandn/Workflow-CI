@@ -33,7 +33,7 @@ X_train, X_test, y_train, y_test = train_test_split(
 input_example = X_train.iloc[:5]
 
 # --- MLflow training ---
-mlflow.set_experiment("Adult_Income_Basic")
+mlflow.set_experiment("Adult Income Advance Tuning")
 
 with mlflow.start_run() as run:
     model = LogisticRegression(max_iter=args.max_iter)
