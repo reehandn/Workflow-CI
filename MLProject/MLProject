@@ -1,6 +1,4 @@
-name: adult-income
-
-conda_env: conda.yaml
+name: adult-income-training
 
 entry_points:
   main:
