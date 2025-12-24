@@ -5,9 +5,6 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
 import pandas as pd
 
-mlflow.set_tracking_uri("file:./mlruns")
-
-# Load data
 df = pd.read_csv("adult_preprocessed.csv")
 
 X = df.drop("income", axis=1)
@@ -24,13 +21,11 @@ with mlflow.start_run():
     y_pred = model.predict(X_test)
     acc = accuracy_score(y_test, y_pred)
 
-    # Log metric
     mlflow.log_metric("accuracy", acc)
 
-    # Log model (INI YANG PENTING)
     mlflow.sklearn.log_model(
         model,
-        name="model"
+        artifact_path="model"
     )
 
     print("Accuracy:", acc)
