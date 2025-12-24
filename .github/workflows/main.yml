@@ -34,7 +34,7 @@ jobs:
       run: |
         mlflow run . --env-manager=local
 
-    name: Build Docker Image from MLflow Model
+    - name: Build Docker Image from MLflow Model
       working-directory: MLProject
       env:
         MLFLOW_TRACKING_URI: https://dagshub.com/reehandn/adult-mlflow.mlflow
