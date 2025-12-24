@@ -30,7 +30,7 @@ from sklearn.metrics import (
 # ======================================
 dagshub.init(
     repo_owner="reehandn",
-    repo_name="adult-mlflow",
+    repo_name="Workflow-CI",
     mlflow=True
 )
 
