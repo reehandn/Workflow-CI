@@ -1,5 +1,8 @@
-name: adult_income_ci
+name: adult-income
+
+conda_env: conda.yaml
 
 entry_points:
   main:
-    command: "python modelling.py"
+    command: >
+      python modelling_tuning.py
