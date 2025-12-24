@@ -41,7 +41,7 @@ jobs:
       run: |
         mlflow run MLProject \
           --env-manager=local \
-          --experiment-name "Adult_Income_Advance_Tuning" \
+          --experiment-name "Adult Income Advance Tuning" \
           -P max_iter=1000
 
     - name: Read Run ID
