@@ -23,12 +23,19 @@ jobs:
         run: conda --version
 
       - name: Install MLflow
-        run: pip install mlflow
+        run: |
+          pip install mlflow scikit-learn pandas
 
       - name: Run MLflow Project & Build Docker Image
         run: |
           cd MLProject
-          mlflow run . --build-image
+          mlflow run . --build-image --env-manager=local
+
+      - name: Upload MLflow artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: mlflow-artifacts
+          path: MLProject/mlruns
 
       - name: List Docker Images
         run: docker images
