@@ -34,6 +34,29 @@ jobs:
       run: |
         mlflow run . --env-manager=local
 
+    - name: DEBUG - path artifact
+      working-directory: MLProject
+      env:
+        MLFLOW_TRACKING_URI: https://dagshub.com/reehandn/adult-mlflow.mlflow
+        MLFLOW_TRACKING_USERNAME: reehandn
+        MLFLOW_TRACKING_PASSWORD: ${{ secrets.DAGSHUB_TOKEN }}
+      run: |
+        set -euxo pipefail
+
+        echo "RUN_ID=$RUN_ID"
+
+        echo "=== Run detail ==="
+        mlflow runs describe --run-id "$RUN_ID"  true
+
+        echo "=== Artifacts (root) ==="
+        mlflow artifacts list -r "$RUN_ID"  true
+
+        echo "=== Artifacts (coba beberapa path umum) ==="
+        mlflow artifacts list -r "$RUN_ID" -a "model"  true
+        mlflow artifacts list -r "$RUN_ID" -a "artifacts"  true
+        mlflow artifacts list -r "$RUN_ID" -a "models"  true
+        mlflow artifacts list -r "$RUN_ID" -a "sklearn-model"  true
+
     - name: Build Docker Image from MLflow Model
       working-directory: MLProject
       env:
@@ -43,35 +66,35 @@ jobs:
       run: |
         set -euxo pipefail
 
-          RUN_ID=$(python - <<'PY'
+        MODEL_PATH=$(python - <<'PY'
         import os
-        import mlflow
         from mlflow.tracking import MlflowClient
 
-        mlflow.set_tracking_uri(os.environ["MLFLOW_TRACKING_URI"])
-        client = MlflowClient()
+        client = MlflowClient(tracking_uri=os.environ["MLFLOW_TRACKING_URI"])
+        run_id = os.environ["RUN_ID"]
 
-        exp = client.get_experiment_by_name("Adult Income Advanced Tuning")
-        if exp is None:
-            raise SystemExit("Experiment tidak ditemukan: Adult Income Advanced Tuning")
+        def walk(path=""):
+            items = client.list_artifacts(run_id, path)
+            for it in items:
+                if it.is_dir:
+                    yield from walk(it.path)
+                else:
+                    yield it.path
 
-        runs = client.search_runs(
-            [exp.experiment_id],
-            filter_string="attributes.status = 'FINISHED'",
-            order_by=["attributes.start_time DESC"],
-            max_results=1
-        )
-        if not runs:
-            raise SystemExit("Tidak ada run FINISHED pada experiment tsb")
-
-        print(runs[0].info.run_id)
+        cari file "MLmodel"
+        mlmodel_files = [p for p in walk("") if p.endswith("/MLmodel") or p == "MLmodel"]
+        if not mlmodel_files:
+            raise SystemExit("Tidak menemukan file MLmodel di artifacts run ini. Berarti run ini tidak menyimpan MLflow Model.")
+        direktori model = parent dari MLmodel
+        model_dir = mlmodel_files[0].rsplit("/", 1)[0] if "/" in mlmodel_files[0] else ""
+        print(model_dir)
         PY
-            )
+        )
 
-            echo "Using RUN_ID=$RUN_ID"
-            mlflow models build-docker \
-              --model-uri "runs:/$RUN_ID/model" \
-              --name reehandn/adult-income-mlflow
+        echo "Detected MODEL_PATH='$MODEL_PATH'"
+        mlflow models build-docker \
+          --model-uri "runs:/$RUN_ID/$MODEL_PATH" \
+          --name reehandn/adult-income-mlflow
 
     - name: Login to Docker Hub
       uses: docker/login-action@v3
