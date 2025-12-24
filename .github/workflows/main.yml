@@ -36,18 +36,15 @@ jobs:
         cd MLProject
         mlflow run . \
           --env-manager=local \
-          --experiment-name ci-experiment
-
-
-    - name: Get latest MLflow run_id
+          --experiment-name ci-experiment \
+          --run-id-file run_id.txt
+          
+    - name: Load RUN_ID
       run: |
-        RUN_ID=$(ls mlruns/*/* | head -n 1 | cut -d'/' -f3)
+        cd MLProject
+        RUN_ID=$(cat run_id.txt)
         echo "RUN_ID=$RUN_ID" >> $GITHUB_ENV
-
-    - name: Debug RUN_ID
-      run: |
-        echo "RUN_ID=${RUN_ID}"
-        ls -R mlruns
+        echo "RUN_ID=$RUN_ID"
 
     - name: Upload artifact to GitHub
       uses: actions/upload-artifact@v4
