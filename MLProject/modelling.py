@@ -5,6 +5,8 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
 import pandas as pd
 
+mlflow.set_tracking_uri("file:./mlruns")
+
 df = pd.read_csv("adult_preprocessed.csv")
 
 X = df.drop("income", axis=1)
@@ -13,8 +15,6 @@ y = df["income"]
 X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.2, random_state=42
 )
-
-mlflow.autolog()
 
 model = LogisticRegression(max_iter=1000)
 model.fit(X_train, y_train)
