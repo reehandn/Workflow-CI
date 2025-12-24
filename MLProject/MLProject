@@ -1,6 +1,9 @@
-name: adult-income
+name: AdultIncomeProject
+
+conda_env: conda.yaml
 
 entry_points:
   main:
-    command: >
-      python modelling.py
+    parameters:
+      max_iter: {type: int, default: 1000}
+    command: "python modelling.py --max_iter {max_iter}"
