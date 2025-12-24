@@ -16,26 +16,35 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
-        python-version: "3.12"
+        python-version: "3.10"
 
-    - name: Install dependencies
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y jq
+
+    - name: Install Python dependencies
       run: |
         pip install mlflow dagshub pandas scikit-learn matplotlib
 
-    - name: Run MLflow Project
+    - name: Run MLflow Project (local env)
       working-directory: MLProject
       env:
         DAGSHUB_USER_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
       run: |
-        mlflow run .
+        mlflow run . --env-manager=local
 
     - name: Build Docker Image from MLflow Model
       working-directory: MLProject
       env:
         MLFLOW_TRACKING_URI: https://dagshub.com/reehandn/adult-mlflow.mlflow
       run: |
+        RUN_ID=$(mlflow runs list \
+          --experiment-name "Adult Income Advanced Tuning" \
+          -o json | jq -r '.[0].run_id')
+
         mlflow models build-docker \
-          --model-uri runs:/$(mlflow runs list --experiment-name "Adult Income Advanced Tuning" -o json | jq -r '.[0].run_id')/model \
+          --model-uri runs:/$RUN_ID/model \
           --name reehandn/adult-income-mlflow
 
     - name: Login to Docker Hub
