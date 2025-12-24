@@ -21,8 +21,3 @@ y_pred = model.predict(X_test)
 acc = accuracy_score(y_test, y_pred)
 
 print("Accuracy:", acc)
-
-mlflow.sklearn.log_model(
-        sk_model=model,
-        artifact_path="model"
-)
