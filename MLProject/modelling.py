@@ -22,4 +22,9 @@ model.fit(X_train, y_train)
 y_pred = model.predict(X_test)
 acc = accuracy_score(y_test, y_pred)
 
+mlflow.sklearn.log_model(
+    sk_model=model,
+    artifact_path="model"
+)
+
 print("Accuracy:", acc)
