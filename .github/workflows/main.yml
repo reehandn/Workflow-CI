@@ -40,9 +40,14 @@ jobs:
 
 
     - name: Get latest MLflow run_id
-      id: runid
       run: |
-        echo "RUN_ID=$(ls mlruns/*/* | head -n 1 | cut -d'/' -f3)" >> $GITHUB_ENV
+        RUN_ID=$(ls mlruns/*/* | head -n 1 | cut -d'/' -f3)
+        echo "RUN_ID=$RUN_ID" >> $GITHUB_ENV
+
+    - name: Debug RUN_ID
+      run: |
+        echo "RUN_ID=${RUN_ID}"
+        ls -R mlruns
 
     - name: Upload artifact to GitHub
       uses: actions/upload-artifact@v4
@@ -56,6 +61,7 @@ jobs:
         mlflow models build-docker \
           -m "runs:/${RUN_ID}/model" \
           -n yourdockerhubusername/adult-income-ml
+
 
     - name: Log in to Docker Hub
       uses: docker/login-action@v3
